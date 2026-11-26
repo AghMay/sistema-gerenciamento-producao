@@ -16,9 +16,13 @@ class SodepService
 
     $codigoAcesso = config('services.minetrack.codigo_acesso');
 
-    $body = [
-        'codigoAcesso' => $codigoAcesso,
-    ];
+    if (empty($url) || empty($codigoAcesso)) {
+            throw new Exception('Configure MINETRACK_LOGIN_URL e MINETRACK_CODIGO_ACESSO no arquivo .env.');
+        }
+
+        $body = [
+            'codigoAcesso' => $codigoAcesso,
+        ];
 
     $response = Http::timeout(30)
         ->acceptJson()
@@ -58,6 +62,10 @@ class SodepService
         array $tokens
     ): array {
         $url = config('services.minetrack.api_url');
+
+        if (empty($url)) {
+            throw new Exception('Configure MINETRACK_API_URL no arquivo .env.');
+        }
 
         $response = Http::timeout(60)
             ->withHeaders([

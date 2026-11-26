@@ -1,0 +1,6 @@
+@extends('layouts.app')
+@section('title','Detalhes da movimentação | Mina Control')
+@section('content')
+<header class="page-heading"><div><h1>Movimentação #{{ $movimentacao->id }}</h1><p>Detalhes da transferência de material</p></div><div class="d-flex gap-2"><a class="btn btn-outline-primary" href="{{ route('movimentacoes.edit',$movimentacao) }}">Editar</a><a class="btn btn-dark-custom" href="{{ route('movimentacoes.index') }}">Voltar</a></div></header>
+<div class="form-card"><dl class="row mb-0"><dt class="col-sm-3">Material</dt><dd class="col-sm-9">{{ $movimentacao->material->nome ?? '—' }}</dd><dt class="col-sm-3">Origem</dt><dd class="col-sm-9">{{ $movimentacao->patioOrigem->nome ?? '—' }}</dd><dt class="col-sm-3">Destino</dt><dd class="col-sm-9">{{ $movimentacao->patioDestino->nome ?? '—' }}</dd><dt class="col-sm-3">Quantidade</dt><dd class="col-sm-9">{{ number_format((float)$movimentacao->quantidade,2,',','.') }} t</dd><dt class="col-sm-3">Data e hora</dt><dd class="col-sm-9">{{ \Carbon\Carbon::parse($movimentacao->data_movimentacao)->format('d/m/Y') }} {{ $movimentacao->hora_movimentacao ? substr($movimentacao->hora_movimentacao,0,5) : '' }}</dd><dt class="col-sm-3">Observação</dt><dd class="col-sm-9">{{ $movimentacao->observacao ?: '—' }}</dd></dl></div>
+@endsection

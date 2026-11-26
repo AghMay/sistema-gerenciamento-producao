@@ -9,124 +9,76 @@ use Illuminate\Http\Request;
 
 class MovimentacaoController extends Controller
 {
-    /**
-     * Exibe uma lista das movimentações.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $movimentacoes = Movimentacao::with([
-            'material',
-            'patioOrigem',
-            'patioDestino'
-        ])->get();
+        $query = Movimentacao::with(['material','patioOrigem','patioDestino']);
+        if ($request->filled('data')) $query->whereDate('data_movimentacao', $request->data);
+        if ($request->filled('material_id')) $query->where('material_id', $request->material_id);
+        if ($request->filled('patio_id')) $query->where(fn($q) => $q->where('patio_origem_id',$request->patio_id)->orWhere('patio_destino_id',$request->patio_id));
 
-        return view('movimentacoes.index', compact('movimentacoes'));
+        $movimentacoes = $query->orderByDesc('data_movimentacao')->orderByDesc('hora_movimentacao')->paginate(15)->withQueryString();
+        $materiais = Material::where('ativo',true)->orderBy('nome')->get();
+        $patios = Patio::where('ativo',true)->orderBy('nome')->get();
+        $totalHoje = Movimentacao::whereDate('data_movimentacao',today())->sum('quantidade');
+        $totalMes = Movimentacao::whereMonth('data_movimentacao',now()->month)->whereYear('data_movimentacao',now()->year)->sum('quantidade');
+        $totalRegistros = Movimentacao::count();
+
+        return view('movimentacoes.index', compact('movimentacoes','materiais','patios','totalHoje','totalMes','totalRegistros'));
     }
 
-    /**
-     * Exibe o formulário de cadastro.
-     */
     public function create()
     {
-        $materiais = Material::where('ativo', true)->get();
-        $patios = Patio::where('ativo', true)->get();
-
-        return view('movimentacoes.create', compact(
-            'materiais',
-            'patios'
-        ));
+        $materiais = Material::where('ativo',true)->orderBy('nome')->get();
+        $patios = Patio::where('ativo',true)->orderBy('nome')->get();
+        return view('movimentacoes.create',compact('materiais','patios'));
     }
 
-    /**
-     * Salva uma nova movimentação.
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'material_id' => 'required|exists:materiais,id',
+        $dados = $request->validate([
+            'material_id' => 'required|exists:materials,id',
             'patio_origem_id' => 'required|exists:patios,id',
             'patio_destino_id' => 'required|exists:patios,id|different:patio_origem_id',
-            'quantidade' => 'required|numeric|min:0',
+            'quantidade' => 'required|numeric|gt:0',
             'data_movimentacao' => 'required|date',
-            'hora_movimentacao' => 'required|date_format:H:i',
-            'observacao' => 'nullable|string',
+            'hora_movimentacao' => 'nullable|date_format:H:i',
+            'observacao' => 'nullable|string|max:2000',
         ]);
-
-        Movimentacao::create($request->all());
-
-        return redirect()
-            ->route('movimentacoes.index')
-            ->with('success', 'Movimentação cadastrada com sucesso!');
+        Movimentacao::create($dados);
+        return redirect()->route('movimentacoes.index')->with('success','Movimentação cadastrada com sucesso.');
     }
 
-    /**
-     * Exibe uma movimentação específica.
-     */
     public function show(Movimentacao $movimentacao)
     {
-        $movimentacao->load([
-            'material',
-            'patioOrigem',
-            'patioDestino'
-        ]);
-
-        return view(
-            'movimentacoes.show',
-            compact('movimentacao')
-        );
+        $movimentacao->load(['material','patioOrigem','patioDestino']);
+        return view('movimentacoes.show',compact('movimentacao'));
     }
 
-    /**
-     * Exibe o formulário de edição.
-     */
     public function edit(Movimentacao $movimentacao)
     {
-        $materiais = Material::where('ativo', true)->get();
-        $patios = Patio::where('ativo', true)->get();
-
-        return view(
-            'movimentacoes.edit',
-            compact(
-                'movimentacao',
-                'materiais',
-                'patios'
-            )
-        );
+        $materiais = Material::where('ativo',true)->orderBy('nome')->get();
+        $patios = Patio::where('ativo',true)->orderBy('nome')->get();
+        return view('movimentacoes.edit',compact('movimentacao','materiais','patios'));
     }
 
-    /**
-     * Atualiza uma movimentação.
-     */
-    public function update(
-        Request $request,
-        Movimentacao $movimentacao
-    ) {
-        $request->validate([
-            'material_id' => 'required|exists:materiais,id',
+    public function update(Request $request, Movimentacao $movimentacao)
+    {
+        $dados = $request->validate([
+            'material_id' => 'required|exists:materials,id',
             'patio_origem_id' => 'required|exists:patios,id',
             'patio_destino_id' => 'required|exists:patios,id|different:patio_origem_id',
-            'quantidade' => 'required|numeric|min:0',
+            'quantidade' => 'required|numeric|gt:0',
             'data_movimentacao' => 'required|date',
-            'hora_movimentacao' => 'required|date_format:H:i',
-            'observacao' => 'nullable|string',
+            'hora_movimentacao' => 'nullable|date_format:H:i',
+            'observacao' => 'nullable|string|max:2000',
         ]);
-
-        $movimentacao->update($request->all());
-
-        return redirect()
-            ->route('movimentacoes.index')
-            ->with('success', 'Movimentação atualizada com sucesso!');
+        $movimentacao->update($dados);
+        return redirect()->route('movimentacoes.index')->with('success','Movimentação atualizada com sucesso.');
     }
 
-    /**
-     * Exclui uma movimentação.
-     */
     public function destroy(Movimentacao $movimentacao)
     {
         $movimentacao->delete();
-
-        return redirect()
-            ->route('movimentacoes.index')
-            ->with('success', 'Movimentação excluída com sucesso!');
+        return redirect()->route('movimentacoes.index')->with('success','Movimentação excluída com sucesso.');
     }
 }

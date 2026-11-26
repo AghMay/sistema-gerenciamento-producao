@@ -288,7 +288,9 @@ class SodepImportService
         // DATA DA PRODUÇÃO
         // ==========================================================
 
-        $dataProducao = $data;
+        $dataProducao = \Carbon\Carbon::parse(
+            $registro['dtRegistroIni'] ?? $data
+        )->toDateString();
 
         // ==========================================================
         // MASSA

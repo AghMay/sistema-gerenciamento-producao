@@ -7,89 +7,33 @@ use Illuminate\Http\Request;
 
 class MaterialController extends Controller
 {
-    /**
-     * Exibe a lista de materiais.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $materiais = Material::all();
-
-        return view('materiais.index', compact('materiais'));
+        $query = Material::query();
+        if ($request->filled('busca')) $query->where('nome','like','%'.$request->busca.'%');
+        if ($request->filled('status')) $query->where('ativo',$request->status === '1');
+        $materiais = $query->orderBy('nome')->paginate(15)->withQueryString();
+        return view('materiais.index',compact('materiais'));
     }
-
-    /**
-     * Exibe o formulário de cadastro.
-     */
-    public function create()
-    {
-        return view('materiais.create');
-    }
-
-    /**
-     * Salva um novo material.
-     */
+    public function create(){return view('materiais.create');}
     public function store(Request $request)
     {
-        $request->validate([
-            'nome' => 'required|string|max:255',
-            'tipo' => 'required|string|max:255',
-            'descricao' => 'nullable|string',
-            'ativo' => 'boolean',
-        ]);
-
-        Material::create($request->all());
-
-        return redirect()
-            ->route('materiais.index')
-            ->with('success', 'Material cadastrado com sucesso!');
+        $dados=$request->validate(['nome'=>'required|string|max:255','tipo'=>'nullable|string|max:255','descricao'=>'nullable|string|max:2000']);
+        $dados['ativo']=$request->boolean('ativo');
+        Material::create($dados);
+        return redirect()->route('materiais.index')->with('success','Material cadastrado com sucesso.');
     }
-
-    /**
-     * Exibe um material específico.
-     */
-public function show($id)
-{
-    $material = Material::findOrFail($id);
-
-    return view('materiais.show', compact('material'));
-}
-
-    /**
-     * Exibe o formulário de edição.
-     */
-    public function edit(Material $material)
+    public function show(Material $material){return view('materiais.show',compact('material'));}
+    public function edit(Material $material){return view('materiais.edit',compact('material'));}
+    public function update(Request $request,Material $material)
     {
-        return view('materiais.edit', compact('material'));
+        $dados=$request->validate(['nome'=>'required|string|max:255','tipo'=>'nullable|string|max:255','descricao'=>'nullable|string|max:2000']);
+        $dados['ativo']=$request->boolean('ativo');$material->update($dados);
+        return redirect()->route('materiais.index')->with('success','Material atualizado com sucesso.');
     }
-
-    /**
-     * Atualiza um material.
-     */
-    public function update(Request $request, Material $material)
-    {
-        $request->validate([
-            'nome' => 'required|string|max:255',
-            'tipo' => 'required|string|max:255',
-            'descricao' => 'nullable|string',
-            'ativo' => 'boolean',
-        ]);
-
-        $material->update($request->all());
-
-        return redirect()
-            ->route('materiais.index')
-            ->with('success', 'Material atualizado com sucesso!');
-    }
-
-    /**
-     * Exclui um material.
-     */
     public function destroy(Material $material)
     {
-        $material->delete();
-
-        return redirect()
-            ->route('materiais.index')
-            ->with('success', 'Material excluído com sucesso!');
+        try{$material->delete();}catch(\Illuminate\Database\QueryException $e){return back()->with('error','Este material possui registros vinculados e não pode ser excluído. Desative-o.');}
+        return redirect()->route('materiais.index')->with('success','Material excluído com sucesso.');
     }
 }

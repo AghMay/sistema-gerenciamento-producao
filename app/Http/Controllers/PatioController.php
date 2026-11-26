@@ -7,87 +7,55 @@ use Illuminate\Http\Request;
 
 class PatioController extends Controller
 {
-    /**
-     * Exibe uma lista dos pátios.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $patios = Patio::all();
+        $query = Patio::query();
+        if ($request->filled('busca')) $query->where('nome', 'like', '%'.$request->busca.'%');
+        if ($request->filled('status')) $query->where('ativo', $request->status === '1');
 
-        return view('patios.index', compact('patios'));
+        $patios = $query->orderBy('nome')->paginate(15)->withQueryString();
+        $totalPatios = Patio::count();
+        $patiosAtivos = Patio::where('ativo', true)->count();
+        $patiosInativos = Patio::where('ativo', false)->count();
+
+        return view('patios.index', compact('patios','totalPatios','patiosAtivos','patiosInativos'));
     }
 
-    /**
-     * Exibe o formulário de cadastro.
-     */
-    public function create()
-    {
-        return view('patios.create');
-    }
+    public function create() { return view('patios.create'); }
 
-    /**
-     * Salva um novo pátio.
-     */
     public function store(Request $request)
     {
-        $request->validate([
+        $dados = $request->validate([
             'nome' => 'required|string|max:255',
-            'localizacao' => 'required|string|max:255',
-            'capacidade' => 'required|numeric|min:0',
-            'ativo' => 'boolean',
+            'localizacao' => 'nullable|string|max:255',
+            'capacidade' => 'nullable|numeric|gt:0',
         ]);
-
-        Patio::create($request->all());
-
-        return redirect()
-            ->route('patios.index')
-            ->with('success', 'Pátio cadastrado com sucesso!');
+        $dados['ativo'] = $request->boolean('ativo');
+        Patio::create($dados);
+        return redirect()->route('patios.index')->with('success','Pátio cadastrado com sucesso.');
     }
 
-    /**
-     * Exibe um pátio específico.
-     */
-    public function show(Patio $patio)
-    {
-        return view('patios.show', compact('patio'));
-    }
+    public function show(Patio $patio) { return view('patios.show', compact('patio')); }
+    public function edit(Patio $patio) { return view('patios.edit', compact('patio')); }
 
-    /**
-     * Exibe o formulário de edição.
-     */
-    public function edit(Patio $patio)
-    {
-        return view('patios.edit', compact('patio'));
-    }
-
-    /**
-     * Atualiza um pátio.
-     */
     public function update(Request $request, Patio $patio)
     {
-        $request->validate([
+        $dados = $request->validate([
             'nome' => 'required|string|max:255',
-            'localizacao' => 'required|string|max:255',
-            'capacidade' => 'required|numeric|min:0',
-            'ativo' => 'boolean',
+            'localizacao' => 'nullable|string|max:255',
+            'capacidade' => 'nullable|numeric|gt:0',
         ]);
-
-        $patio->update($request->all());
-
-        return redirect()
-            ->route('patios.index')
-            ->with('success', 'Pátio atualizado com sucesso!');
+        $dados['ativo'] = $request->boolean('ativo');
+        $patio->update($dados);
+        return redirect()->route('patios.index')->with('success','Pátio atualizado com sucesso.');
     }
 
-    /**
-     * Exclui um pátio.
-     */
     public function destroy(Patio $patio)
     {
-        $patio->delete();
-
-        return redirect()
-            ->route('patios.index')
-            ->with('success', 'Pátio excluído com sucesso!');
+        try { $patio->delete(); }
+        catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error','Não é possível excluir este pátio porque existem movimentações vinculadas a ele. Desative-o em vez disso.');
+        }
+        return redirect()->route('patios.index')->with('success','Pátio excluído com sucesso.');
     }
 }
